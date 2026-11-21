@@ -9,9 +9,6 @@ import '../theme.dart';
 import '../ticket_store.dart';
 import '../widgets.dart';
 
-/// Wireframes 4a (Medical) and 4b (Security). One screen, filtered by the
-/// signed-in responder's type. Wide screens show table + detail side by side;
-/// phones stack them (the table scrolls sideways, like the wireframe).
 class ResponderDashboardScreen extends StatefulWidget {
   const ResponderDashboardScreen({super.key, required this.user});
 
@@ -24,7 +21,7 @@ class ResponderDashboardScreen extends StatefulWidget {
 
 class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
   final _store = TicketStore.instance;
-  int? _selectedId;
+  String? _selectedId;
   bool _soundOn = true;
   late int _lastUnclaimed;
 
@@ -44,7 +41,6 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     super.dispose();
   }
 
-  // Beep when a new ticket for this dashboard arrives.
   void _onStoreChanged() {
     final now = _unclaimed();
     if (now > _lastUnclaimed && _soundOn) {
@@ -286,10 +282,6 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Stat card
-// ---------------------------------------------------------------------------
-
 class _StatCard extends StatelessWidget {
   const _StatCard({
     required this.value,
@@ -330,10 +322,6 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Ticket table
-// ---------------------------------------------------------------------------
-
 class _TicketTable extends StatelessWidget {
   const _TicketTable({
     required this.tickets,
@@ -342,10 +330,10 @@ class _TicketTable extends StatelessWidget {
   });
 
   final List<Ticket> tickets;
-  final int? selectedId;
+  final String? selectedId; 
   final ValueChanged<Ticket> onSelect;
 
-  static const _idW = 56.0;
+  static const _idW = 76.0;
   static const _locW = 130.0;
   static const _timeW = 100.0;
   static const _statusW = 130.0;
@@ -410,6 +398,8 @@ class _TicketTable extends StatelessWidget {
         ? AppColors.redTint
         : (isSelected ? AppColors.selectedRow : Colors.white);
 
+    final shortId = t.id.length > 5 ? t.id.substring(0, 5).toUpperCase() : t.id;
+
     return InkWell(
       onTap: () => onSelect(t),
       child: Container(
@@ -429,7 +419,7 @@ class _TicketTable extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _cell(
-              Text('${t.id}', style: ts(15, FontWeight.w700)),
+              Text(shortId, style: ts(15, FontWeight.w700)),
               width: _idW - (isNew ? 5 : 0),
             ),
             _cell(
@@ -472,10 +462,6 @@ class _TicketTable extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Ticket detail panel (right side / below the table)
-// ---------------------------------------------------------------------------
-
 class TicketDetailPanel extends StatefulWidget {
   const TicketDetailPanel({super.key, required this.ticket, required this.user});
 
@@ -493,7 +479,6 @@ class _TicketDetailPanelState extends State<TicketDetailPanel> {
   @override
   void initState() {
     super.initState();
-    // Ticks the escalation countdown while the ticket is still unclaimed.
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && widget.ticket.isNew) setState(() {});
     });
@@ -522,6 +507,8 @@ class _TicketDetailPanelState extends State<TicketDetailPanel> {
     final canResolve = mine &&
         (t.status == TicketStatus.acknowledged || t.status == TicketStatus.enRoute);
 
+    final shortId = t.id.length > 5 ? t.id.substring(0, 5).toUpperCase() : t.id;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -535,7 +522,7 @@ class _TicketDetailPanelState extends State<TicketDetailPanel> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Ticket #${t.id}', style: ts(20, FontWeight.w700)),
+              Text('Ticket #$shortId', style: ts(20, FontWeight.w700)),
               StatusPill(t.status),
             ],
           ),

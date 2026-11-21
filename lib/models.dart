@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 enum TicketType { medical, security }
 
 enum TicketStatus { reported, acknowledged, enRoute, resolved }
@@ -85,7 +87,7 @@ class Ticket {
     Map<TicketStatus, DateTime>? times,
   }) : times = times ?? {TicketStatus.reported: reportedAt};
 
-  final int id;
+  final String id;
   final TicketType type;
   final String detail;
   final String location;
@@ -95,12 +97,54 @@ class Ticket {
   TicketStatus status;
   String? responder;
 
-  /// When each status was reached (used by the timelines).
   final Map<TicketStatus, DateTime> times;
 
   bool get isNew => status == TicketStatus.reported;
-  bool get isHighPriority => _highPriority.contains(detail);
-  String get priorityLabel => isHighPriority ? 'High' : 'Normal';
+  
+  // Is it a critical issue by default?
+  bool get isInherentlyHigh => _highPriority.contains(detail);
+  
+  // Dynamic Algorithmic Priority: True if inherently critical OR if 5 mins have passed
+  bool get isHighPriority {
+    if (isInherentlyHigh) return true;
+    final elapsed = DateTime.now().difference(reportedAt);
+    return elapsed >= const Duration(minutes: 5);
+  }
+  
+  String get priorityLabel => isHighPriority ? 'High' : 'Medium';
+
+  Map<String, dynamic> toMap() {
+    return {
+      'type': type.name,
+      'detail': detail,
+      'location': location,
+      'note': note,
+      'reportedAt': reportedAt.toIso8601String(),
+      'status': status.name,
+      'responder': responder,
+      'times': times.map((k, v) => MapEntry(k.name, v.toIso8601String())),
+    };
+  }
+
+  factory Ticket.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    final timesMap = data['times'] as Map<String, dynamic>? ?? {};
+    
+    return Ticket(
+      id: doc.id,
+      type: TicketType.values.byName(data['type'] ?? 'medical'),
+      detail: data['detail'] ?? '',
+      location: data['location'] ?? '',
+      note: data['note'] ?? '',
+      reportedAt: DateTime.tryParse(data['reportedAt']?.toString() ?? '') ?? DateTime.now(),
+      status: TicketStatus.values.byName(data['status'] ?? 'reported'),
+      responder: data['responder'],
+      times: timesMap.map((k, v) => MapEntry(
+        TicketStatus.values.byName(k), 
+        DateTime.tryParse(v.toString()) ?? DateTime.now(),
+      )),
+    );
+  }
 }
 
 class Responder {
@@ -116,14 +160,11 @@ class Responder {
   final String password;
   final String name;
   final String group;
-
-  /// The account decides which dashboard opens.
   final TicketType type;
 
   String get signedInLabel => '$name ($group)';
 }
 
-// Demo accounts for the hackathon. Replace with real auth later.
 const kResponders = [
   Responder(
     loginId: 'ana.clinic',
@@ -148,7 +189,6 @@ Responder? authenticate(String loginId, String password) {
   return null;
 }
 
-/// "9:41 AM" or, with [seconds], "9:41:05 AM".
 String formatTime(DateTime t, {bool seconds = false}) {
   final h12 = t.hour % 12 == 0 ? 12 : t.hour % 12;
   final mm = t.minute.toString().padLeft(2, '0');

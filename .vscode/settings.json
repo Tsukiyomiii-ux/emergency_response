@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "D:/Codes/emergency_dispatch_system/emergency_response/windows"
+    "cmake.sourceDirectory": "D:/Codes/emergency_dispatch_system/emergency_response/windows",
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

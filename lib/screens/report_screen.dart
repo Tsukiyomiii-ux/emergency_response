@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '/models.dart';
+import '../models.dart';
 import '../theme.dart';
 import '../ticket_store.dart';
 import '../widgets.dart';
 import 'login_screen.dart';
 import 'report_sent_screen.dart';
 
-/// Wireframes 1a (Medical selected) and 1b (Security selected).
-/// One screen: the "What exactly?" options change with the chosen type.
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
 
@@ -23,6 +21,7 @@ class _ReportScreenState extends State<ReportScreen> {
   String _detail = TicketType.medical.details.first;
   String? _location;
   bool _locationError = false;
+  bool _isSending = false;
 
   @override
   void dispose() {
@@ -42,27 +41,36 @@ class _ReportScreenState extends State<ReportScreen> {
     if (_location == null) {
       setState(() => _locationError = true);
       return;
-
-    
     }
-    final ticket = TicketStore.instance.create(
-      type: _type,
-      detail: _detail,
-      location: _location!,
-      note: _noteCtrl.text.trim(),
-    );
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ReportSentScreen(ticketId: ticket.id)),
-    );
-    // Back from "Report sent" -> fresh form for another report.
-    if (!mounted) return;
-    setState(() {
-      _type = TicketType.medical;
-      _detail = _type.details.first;
-      _location = null;
-      _locationError = false;
-      _noteCtrl.clear();
-    });
+    
+    setState(() => _isSending = true);
+
+    try {
+      final ticket = await TicketStore.instance.create(
+        type: _type,
+        detail: _detail,
+        location: _location!,
+        note: _noteCtrl.text.trim(),
+      );
+      
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ReportSentScreen(ticketId: ticket.id)),
+      );
+      
+      if (!mounted) return;
+      setState(() {
+        _type = TicketType.medical;
+        _detail = _type.details.first;
+        _location = null;
+        _locationError = false;
+        _noteCtrl.clear();
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isSending = false);
+      }
+    }
   }
 
   Widget _sectionLabel(String title, {String? hint, Color? hintColor}) {
@@ -103,8 +111,7 @@ class _ReportScreenState extends State<ReportScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon,
-                    size: 28, color: selected ? AppColors.red : AppColors.navy),
+                Icon(icon, size: 28, color: selected ? AppColors.red : AppColors.navy),
                 const SizedBox(height: 6),
                 Text(
                   t.label,
@@ -167,7 +174,6 @@ class _ReportScreenState extends State<ReportScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. What happened?
                   _sectionLabel('1. What happened?'),
                   const SizedBox(height: 10),
                   Row(
@@ -178,8 +184,6 @@ class _ReportScreenState extends State<ReportScreen> {
                     ],
                   ),
                   const SizedBox(height: 18),
-
-                  // 2. What exactly?
                   _sectionLabel('2. What exactly?', hint: 'Tap one'),
                   const SizedBox(height: 10),
                   GridView.builder(
@@ -200,10 +204,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     style: ts(12, FontWeight.w400, color: AppColors.muted, height: 1.4),
                   ),
                   const SizedBox(height: 18),
-
-                  // 3. Where?
-                  _sectionLabel('3. Where?',
-                      hint: 'Required', hintColor: AppColors.red),
+                  _sectionLabel('3. Where?', hint: 'Required', hintColor: AppColors.red),
                   const SizedBox(height: 8),
                   Container(
                     height: 48,
@@ -241,8 +242,6 @@ class _ReportScreenState extends State<ReportScreen> {
                           style: ts(13, FontWeight.w600, color: AppColors.red)),
                     ),
                   const SizedBox(height: 18),
-
-                  // 4. Short note
                   _sectionLabel('4. Short note', hint: 'Optional'),
                   const SizedBox(height: 8),
                   TextField(
@@ -263,7 +262,10 @@ class _ReportScreenState extends State<ReportScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  PrimaryButton(label: 'Send report', onPressed: _send),
+                  PrimaryButton(
+                    label: _isSending ? 'Sending...' : 'Send report', 
+                    onPressed: _isSending ? null : _send,
+                  ),
                   const SizedBox(height: 10),
                   Text(
                     'Time of report is recorded automatically.',

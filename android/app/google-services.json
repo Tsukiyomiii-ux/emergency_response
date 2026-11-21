@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "35820243036",
+    "project_id": "isatu-emergency",
+    "storage_bucket": "isatu-emergency.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:35820243036:android:8334008ea912a56a14be99",
+        "android_client_info": {
+          "package_name": "com.example.emergency_response"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBo3IE_kY3HkQnZxxC2rxGWznVUx0I1-no"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

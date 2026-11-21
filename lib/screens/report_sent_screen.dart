@@ -6,11 +6,10 @@ import '../ticket_store.dart';
 import '../widgets.dart';
 import 'login_screen.dart';
 
-/// Wireframe 2. Rebuilds live when a responder claims / updates the ticket.
 class ReportSentScreen extends StatelessWidget {
   const ReportSentScreen({super.key, required this.ticketId});
 
-  final int ticketId;
+  final String ticketId;
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +17,15 @@ class ReportSentScreen extends StatelessWidget {
     return ListenableBuilder(
       listenable: store,
       builder: (context, _) {
-        final t = store.byId(ticketId)!;
+        final t = store.byId(ticketId);
+        
+        // Prevents crash during network latency gap
+        if (t == null) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
         return Scaffold(
           body: Column(
             children: [
@@ -92,6 +99,7 @@ class _TicketCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final shortId = ticket.id.length > 5 ? ticket.id.substring(0, 5).toUpperCase() : ticket.id;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -105,7 +113,7 @@ class _TicketCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Ticket #${ticket.id}', style: ts(20, FontWeight.w700)),
+              Text('Ticket #$shortId', style: ts(20, FontWeight.w700)),
               StatusPill(ticket.status, fontSize: 14),
             ],
           ),
