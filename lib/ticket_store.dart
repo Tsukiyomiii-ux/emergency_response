@@ -63,24 +63,17 @@ Future<Ticket> create({
         final isSameType = t.type == type;
         final isSameLocation = t.location == location;
         final isSameCondition = t.detail == detail; 
-
-        // Must not be resolved yet
         final isActive = t.status != TicketStatus.resolved;
-        
-        // STRICT TIMEOUT: Only merges if the original was reported within the last 10 minutes
         final isRecent = now.difference(t.reportedAt) <= const Duration(minutes: 10);
         
         return isSameType && isSameLocation && isSameCondition && isActive && isRecent;
       });
 
-      // Match found within 10 minutes. Increment the confidence badge.
       await _collection.doc(duplicate.id).update({
         'verificationCount': FieldValue.increment(1),
       });
       return duplicate; 
-    } catch (_) {
-      // No match, or the previous incident is older than 10 mins. Create new ticket.
-    }
+    } catch (_) {}
 
     // ---------------------------------------------------------
     // 2. GEOSPATIAL DATA SETUP
@@ -89,12 +82,11 @@ Future<Ticket> create({
     final targetX = targetCoords[0];
     final targetY = targetCoords[1];
 
-// ---------------------------------------------------------
+    // ---------------------------------------------------------
     // 3. DYNAMIC BLAST RADIUS (GEOFENCE ALGORITHM)
     // ---------------------------------------------------------
     List<String> blastRadiusZones = [];
-
-    // TWEAK: Only calculate a threat radius for area-of-effect emergencies
+    
     if (detail == 'Fire' || detail == 'Suspected Bomb') {
       kLocationCoords.forEach((zoneName, coords) {
         if (zoneName != location) { 
@@ -125,7 +117,6 @@ Future<Ticket> create({
       }
     }
 
-    // Create the brand new ticket payload
     final docRef = _collection.doc();
     final ticket = Ticket(
       id: docRef.id,
@@ -140,9 +131,37 @@ Future<Ticket> create({
     );
     
     await docRef.set(ticket.toMap());
+
+    // ---------------------------------------------------------
+    // 5. AUTOMATED MULTI-AGENCY RESPONSE (CROSS-DISPATCH)
+    // ---------------------------------------------------------
+    // The !note.contains check acts as a circuit breaker so auto-dispatches don't infinitely trigger each other.
+    if (!note.contains('[AUTO-DISPATCH]')) {
+      
+      // If it's a dangerous security event, automatically alert the clinic
+      if (detail == 'Fight or violence' || detail == 'Suspected Bomb' || detail == 'Fire') {
+        create(
+          type: TicketType.medical,
+          detail: 'Medical Standby',
+          location: location,
+          note: '[AUTO-DISPATCH] Anticipated injuries from Security incident: $detail.',
+        );
+      } 
+      
+      // If it's a severe medical event, automatically alert security to lock down the area
+      else if (detail == 'Major Bleeding' || detail == 'Unconscious') {
+        create(
+          type: TicketType.security,
+          detail: 'Security Standby',
+          location: location,
+          note: '[AUTO-DISPATCH] Scene control and crowd management required for Medical incident: $detail.',
+        );
+      }
+    }
+
     return ticket;
   }
-
+  
   Future<void> claim(Ticket t, String responderName) async {
     if (t.status != TicketStatus.reported) return;
     

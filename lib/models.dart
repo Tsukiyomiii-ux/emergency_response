@@ -58,16 +58,18 @@ const Map<String, PriorityLevel> kBasePriorities = {
   'Seizure': PriorityLevel.medium,
   'Dislocation or Fracture': PriorityLevel.low,
   'Allergic reaction': PriorityLevel.medium,
+  'Medical Standby': PriorityLevel.medium, // NEW: Auto-dispatch target
   
   // Security
   'Weapon sighted': PriorityLevel.high,
   'Fight or violence': PriorityLevel.high,
   'Suspected Bomb': PriorityLevel.high,
-  'Fire': PriorityLevel.high, // NEW: Added Fire as a High Priority
+  'Fire': PriorityLevel.high, 
   'Theft or robbery': PriorityLevel.medium,
   'Harassment': PriorityLevel.medium,
   'Suspicious person': PriorityLevel.medium,
   'Vandalism': PriorityLevel.low,
+  'Security Standby': PriorityLevel.medium, // NEW: Auto-dispatch target
   
   // Fallbacks
   'Other': PriorityLevel.low,
