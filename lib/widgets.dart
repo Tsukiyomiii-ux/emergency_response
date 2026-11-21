@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'models.dart';
 import 'theme.dart';
 
-/// Navy header used on the mobile screens.
 class AppHeader extends StatelessWidget {
   const AppHeader({super.key, required this.title, this.trailing});
 
@@ -13,36 +12,37 @@ class AppHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.navy,
+      width: double.infinity,
+      color: AppColors.navy, 
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'ISATU EMERGENCY',
-                      style: ts(13, FontWeight.w600,
-                          color: Colors.white, letterSpacing: 0.8),
+                    // The standalone logo, sized up
+                    Image.asset(
+                      'assets/logo.png',
+                      height: 64, // You can now use a smaller height because there is no invisible padding
+                      fit: BoxFit.contain,
+                      alignment: Alignment.centerLeft, // Aligns it perfectly with the text below it
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     Text(
                       title,
-                      style: ts(26, FontWeight.w700,
-                          color: Colors.white, height: 1.15),
+                      style: ts(24, FontWeight.w800, color: Colors.white),
                     ),
                   ],
                 ),
               ),
-              if (trailing != null) ...[
-                const SizedBox(width: 12),
-                trailing!,
-              ],
+              if (trailing != null) trailing!,
             ],
           ),
         ),
