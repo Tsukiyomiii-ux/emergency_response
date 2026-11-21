@@ -89,13 +89,13 @@ Future<Ticket> create({
     final targetX = targetCoords[0];
     final targetY = targetCoords[1];
 
-    // ---------------------------------------------------------
+// ---------------------------------------------------------
     // 3. DYNAMIC BLAST RADIUS (GEOFENCE ALGORITHM)
     // ---------------------------------------------------------
     List<String> blastRadiusZones = [];
-    final startingPriority = kBasePriorities[detail] ?? PriorityLevel.low;
 
-    if (startingPriority == PriorityLevel.high) {
+    // TWEAK: Only calculate a threat radius for area-of-effect emergencies
+    if (detail == 'Fire' || detail == 'Suspected Bomb') {
       kLocationCoords.forEach((zoneName, coords) {
         if (zoneName != location) { 
           final dist = math.sqrt(math.pow(coords[0] - targetX, 2) + math.pow(coords[1] - targetY, 2));

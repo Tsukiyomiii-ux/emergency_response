@@ -34,7 +34,7 @@ const kMedicalDetails = [
 ];
 
 const kSecurityDetails = [
-  'Fight or violence', 'Weapon sighted', 'Suspected Bomb', 'Theft or robbery',
+  'Fight or violence', 'Weapon sighted', 'Suspected Bomb', 'Fire', 'Theft or robbery',
   'Harassment', 'Suspicious person', 'Vandalism', 'Other',
 ];
 
@@ -63,6 +63,7 @@ const Map<String, PriorityLevel> kBasePriorities = {
   'Weapon sighted': PriorityLevel.high,
   'Fight or violence': PriorityLevel.high,
   'Suspected Bomb': PriorityLevel.high,
+  'Fire': PriorityLevel.high, // NEW: Added Fire as a High Priority
   'Theft or robbery': PriorityLevel.medium,
   'Harassment': PriorityLevel.medium,
   'Suspicious person': PriorityLevel.medium,
