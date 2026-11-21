@@ -16,6 +16,7 @@ class ReportScreen extends StatefulWidget {
 
 class _ReportScreenState extends State<ReportScreen> {
   final _noteCtrl = TextEditingController();
+  final _otherDetailCtrl = TextEditingController(); // NEW: Controller for the 'Other' text box
 
   TicketType _type = TicketType.medical;
   String _detail = TicketType.medical.details.first;
@@ -29,6 +30,7 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   void dispose() {
     _noteCtrl.dispose();
+    _otherDetailCtrl.dispose();
     super.dispose();
   }
 
@@ -37,6 +39,7 @@ class _ReportScreenState extends State<ReportScreen> {
     setState(() {
       _type = t;
       _detail = t.details.first;
+      _otherDetailCtrl.clear(); // Clear custom text when switching types
     });
   }
 
@@ -44,7 +47,7 @@ class _ReportScreenState extends State<ReportScreen> {
     if (s == _site) return;
     setState(() {
       _site = s;
-      _location = null; // Reset specific location when switching sites
+      _location = null; 
       _locationError = false;
     });
   }
@@ -57,11 +60,20 @@ class _ReportScreenState extends State<ReportScreen> {
     
     setState(() => _isSending = true);
 
+    // Determine the final detail string
+    String finalDetail = _detail;
+    if (_detail == 'Other') {
+      final customText = _otherDetailCtrl.text.trim();
+      if (customText.isNotEmpty) {
+        finalDetail = customText; // Use their custom typed emergency
+      }
+    }
+
     try {
       final ticket = await TicketStore.instance.create(
         type: _type,
-        detail: _detail,
-        location: '${_site.label} - $_location', // Combines site + location for the responder dashboard
+        detail: finalDetail, 
+        location: '${_site.label} - $_location', 
         note: _noteCtrl.text.trim(),
       );
       
@@ -78,6 +90,7 @@ class _ReportScreenState extends State<ReportScreen> {
         _location = null;
         _locationError = false;
         _noteCtrl.clear();
+        _otherDetailCtrl.clear();
       });
     } finally {
       if (mounted) {
@@ -251,6 +264,20 @@ class _ReportScreenState extends State<ReportScreen> {
                       () => setState(() => _detail = _type.details[i]),
                     ),
                   ),
+                  
+                  // NEW: Dynamic text field when 'Other' is selected
+                  if (_detail == 'Other') ...[
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _otherDetailCtrl,
+                      textCapitalization: TextCapitalization.sentences,
+                      style: ts(15, FontWeight.w400),
+                      decoration: appInput().copyWith(
+                        hintText: 'Please specify the emergency...',
+                      ),
+                    ),
+                  ],
+                  
                   const SizedBox(height: 18),
 
                   _sectionLabel('3. Where?', hint: 'Required', hintColor: AppColors.red),
@@ -264,7 +291,6 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                   const SizedBox(height: 14),
                   
-                  // Specific Location Grid for the selected Campus Site
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -292,7 +318,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     ),
                   const SizedBox(height: 18),
 
-                  _sectionLabel('4. Building Floor or Room Number', hint: 'Optional'),
+                  _sectionLabel('Builing Floor or Room No.', hint: 'Optional'),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _noteCtrl,

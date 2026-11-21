@@ -29,7 +29,7 @@ extension CampusSiteX on CampusSite {
 }
 
 const kMedicalDetails = [
-  'Unconscious', 'Minor Bleeding','Major Bleeding', 'Difficulty breathing', 'Chest pain',
+  'Unconscious', 'Minor Bleeding','Difficulty breathing', 'Chest pain', 'Major Bleeding',  
   'Seizure', 'Dislocation or Fracture', 'Allergic reaction', 'Other',
 ];
 
@@ -40,11 +40,11 @@ const kSecurityDetails = [
 
 // Split the locations into two categories for the new UI
 const kMainSiteLocations = [
-  'Library', 'Main Gate', 'Gym', 'Canteen', 'Administration Building', 'N-Building',
+  'Main Gate', 'Gym', 'Canteen', 'Administration Building','Library', 'N-Building', 'K-Building', 'Dormitory', 'CIT Building', 'HRT Building',
 ];
 
 const kNewSiteLocations = [
-  'N Building', 'New Site Gate', 'HRT Building', 'CEA Building', 'Other',
+  'New Site Gate', 'CCI Building', 'CEA Building', 'Research Hub', 'CHERC', 'GAD', 'SSB', 'Science Lab', 'Science Building','Power House',
 ];
 
 // Master Algorithm Configuration
@@ -56,7 +56,7 @@ const Map<String, PriorityLevel> kBasePriorities = {
   'Difficulty breathing': PriorityLevel.medium,
   'Chest pain': PriorityLevel.high,
   'Seizure': PriorityLevel.medium,
-  'Dislocation or Fracture': PriorityLevel.low, // Updated from user's latest code
+  'Dislocation or Fracture': PriorityLevel.low,
   'Allergic reaction': PriorityLevel.medium,
   
   // Security
@@ -78,19 +78,28 @@ const Map<String, PriorityLevel> kBasePriorities = {
 // ---------------------------------------------------------
 const Map<String, List<double>> kLocationCoords = {
   // Main Site (General Area: X: 10-40, Y: 10-40)
-  'Main Site - Library': [15.0, 25.0],
   'Main Site - Main Gate': [10.0, 10.0],
   'Main Site - Gym': [35.0, 20.0],
   'Main Site - Canteen': [25.0, 30.0],
   'Main Site - Administration Building': [20.0, 15.0],
+  'Main Site - Library': [15.0, 25.0],
   'Main Site - N-Building': [30.0, 25.0],
+  'Main Site - K-Building': [32.0, 28.0],
+  'Main Site - Dormitory': [38.0, 35.0],
+  'Main Site - CIT Building': [28.0, 12.0],
+  'Main Site - HRT Building': [24.0, 22.0],
   
   // New Site (General Area: X: 70-100, Y: 70-100)
-  'New Site - N Building': [85.0, 80.0],
   'New Site - New Site Gate': [70.0, 70.0],
-  'New Site - HRT Building': [90.0, 85.0],
+  'New Site - CCI Building': [75.0, 80.0],
   'New Site - CEA Building': [75.0, 95.0],
-  'New Site - Other': [80.0, 80.0],
+  'New Site - Research Hub': [85.0, 75.0],
+  'New Site - CHERC': [90.0, 80.0],
+  'New Site - GAD': [82.0, 88.0],
+  'New Site - SSB': [78.0, 85.0],
+  'New Site - Science Lab': [88.0, 92.0],
+  'New Site - Science Building': [86.0, 95.0],
+  'New Site - Power House': [95.0, 70.0],
 };
 
 extension TicketTypeX on TicketType {
