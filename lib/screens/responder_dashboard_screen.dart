@@ -56,13 +56,18 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
       body: ListenableBuilder(
         listenable: _store,
         builder: (context, _) {
-          final tickets = _store.forType(user.type);
+          final allTickets = _store.forType(user.type);
+          
+          // Split the tickets into active and finished queues
+          final activeTickets = allTickets.where((t) => t.status != TicketStatus.resolved).toList();
+          final resolvedTickets = allTickets.where((t) => t.status == TicketStatus.resolved).toList();
 
           Ticket? selected;
-          for (final t in tickets) {
+          for (final t in allTickets) {
             if (t.id == _selectedId) selected = t;
           }
-          selected ??= tickets.isEmpty ? null : tickets.first;
+          // Default selection fallback
+          selected ??= activeTickets.isNotEmpty ? activeTickets.first : (resolvedTickets.isNotEmpty ? resolvedTickets.first : null);
 
           return Column(
             children: [
@@ -75,20 +80,20 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                     return SingleChildScrollView(
                       child: Center(
                         child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 1200),
+                          constraints: const BoxConstraints(maxWidth: 1500),
                           child: Padding(
                             padding: EdgeInsets.fromLTRB(hPad, 24, hPad, 40),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildStats(tickets, user.type),
+                                _buildStats(allTickets, user.type),
                                 const SizedBox(height: 20),
                                 if (wide)
                                   Row(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Expanded(
-                                        child: _buildTable(tickets, selected, user.type),
+                                        child: _buildTableArea(activeTickets, resolvedTickets, selected, user.type),
                                       ),
                                       const SizedBox(width: 20),
                                       SizedBox(
@@ -98,7 +103,7 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                                     ],
                                   )
                                 else ...[
-                                  _buildTable(tickets, selected, user.type),
+                                  _buildTableArea(activeTickets, resolvedTickets, selected, user.type),
                                   const SizedBox(height: 20),
                                   _buildDetail(selected, user),
                                 ],
@@ -240,23 +245,69 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     );
   }
 
-  Widget _buildTable(List<Ticket> tickets, Ticket? selected, TicketType type) {
+  Widget _buildTableArea(List<Ticket> active, List<Ticket> resolved, Ticket? selected, TicketType type) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Live ${type.label.toLowerCase()} tickets',
-            style: ts(17, FontWeight.w700)),
-        const SizedBox(height: 10),
-        _TicketTable(
-          tickets: tickets,
-          selectedId: selected?.id,
-          onSelect: (t) => setState(() => _selectedId = t.id),
+        // Header with Legend
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text('Active tickets', style: ts(17, FontWeight.w700)),
+            Wrap(
+              spacing: 14,
+              children: [
+                _PriorityLegend(color: Colors.red, label: 'High'),
+                _PriorityLegend(color: Colors.orange, label: 'Medium'),
+                _PriorityLegend(color: Colors.yellow.shade700, label: 'Low'),
+              ],
+            ),
+          ],
         ),
         const SizedBox(height: 10),
-        Text(
-          'Only ${type.label} reports appear here. The list updates by itself. Tap a row to open its details.',
-          style: ts(13, FontWeight.w400, color: AppColors.muted),
-        ),
+        
+        // Active Tickets Table
+        if (active.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border, width: 2),
+            ),
+            child: Text('No active tickets.', style: ts(15, FontWeight.w500, color: AppColors.muted)),
+          )
+        else
+          _TicketTable(
+            tickets: active,
+            selectedId: selected?.id,
+            onSelect: (t) => setState(() => _selectedId = t.id),
+          ),
+        
+        const SizedBox(height: 32),
+        
+        // Resolved Tickets Table
+        Text('Resolved tickets', style: ts(17, FontWeight.w700)),
+        const SizedBox(height: 10),
+        if (resolved.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border, width: 2),
+            ),
+            child: Text('No resolved tickets yet.', style: ts(15, FontWeight.w500, color: AppColors.muted)),
+          )
+        else
+          _TicketTable(
+            tickets: resolved,
+            selectedId: selected?.id,
+            onSelect: (t) => setState(() => _selectedId = t.id),
+          ),
       ],
     );
   }
@@ -322,6 +373,28 @@ class _StatCard extends StatelessWidget {
   }
 }
 
+class _PriorityLegend extends StatelessWidget {
+  const _PriorityLegend({required this.color, required this.label});
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: ts(13, FontWeight.w600, color: AppColors.muted)),
+      ],
+    );
+  }
+}
+
 class _TicketTable extends StatelessWidget {
   const _TicketTable({
     required this.tickets,
@@ -333,9 +406,10 @@ class _TicketTable extends StatelessWidget {
   final String? selectedId; 
   final ValueChanged<Ticket> onSelect;
 
-  static const _idW = 76.0;
-  static const _locW = 130.0;
-  static const _timeW = 100.0;
+  static const _idW = 80.0;
+  static const _locW = 170.0; // Increased so "Main Site - Administration" fits on one line
+  static const _timeW = 105.0; // Increased slightly for the AM/PM
+  static const _prioW = 90.0;
   static const _statusW = 130.0;
   static const _respW = 120.0;
 
@@ -363,7 +437,8 @@ class _TicketTable extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final w = math.max(constraints.maxWidth, 700.0);
+          // Increased min-width from 700 to 780 to fit the new Priority column
+          final w = math.max(constraints.maxWidth, 780.0);
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SizedBox(
@@ -376,6 +451,7 @@ class _TicketTable extends StatelessWidget {
                       _headCell('Detail'),
                       _headCell('Location', width: _locW),
                       _headCell('Time', width: _timeW),
+                      _headCell('Priority', width: _prioW),
                       _headCell('Status', width: _statusW),
                       _headCell('Responder', width: _respW),
                     ],
@@ -394,9 +470,26 @@ class _TicketTable extends StatelessWidget {
   Widget _buildRow(Ticket t, {required bool isFirst}) {
     final isNew = t.isNew;
     final isSelected = t.id == selectedId;
-    final bg = isNew
-        ? AppColors.redTint
-        : (isSelected ? AppColors.selectedRow : Colors.white);
+    final bg = isSelected ? AppColors.selectedRow : Colors.white;
+
+    // Apply the requested Red/Orange/Yellow priority color coding
+    final Color priorityBorderColor;
+    final Color priorityTextColor;
+    
+    switch (t.currentPriority) {
+      case PriorityLevel.high:
+        priorityBorderColor = Colors.red;
+        priorityTextColor = Colors.red.shade700;
+        break;
+      case PriorityLevel.medium:
+        priorityBorderColor = Colors.orange;
+        priorityTextColor = Colors.orange.shade800;
+        break;
+      case PriorityLevel.low:
+        priorityBorderColor = Colors.yellow.shade700;
+        priorityTextColor = Colors.orange.shade900; // Darkened for readability on white
+        break;
+    }
 
     final shortId = t.id.length > 5 ? t.id.substring(0, 5).toUpperCase() : t.id;
 
@@ -410,9 +503,7 @@ class _TicketTable extends StatelessWidget {
               color: isFirst ? AppColors.border : AppColors.divider,
               width: 2,
             ),
-            left: isNew
-                ? const BorderSide(color: AppColors.red, width: 5)
-                : BorderSide.none,
+            left: BorderSide(color: priorityBorderColor, width: 6),
           ),
         ),
         child: Row(
@@ -420,7 +511,7 @@ class _TicketTable extends StatelessWidget {
           children: [
             _cell(
               Text(shortId, style: ts(15, FontWeight.w700)),
-              width: _idW - (isNew ? 5 : 0),
+              width: _idW - 6, // account for the 6px priority border
             ),
             _cell(
               Wrap(
@@ -443,17 +534,24 @@ class _TicketTable extends StatelessWidget {
               ),
             ),
             _cell(Text(t.location, style: ts(15, FontWeight.w400)), width: _locW),
-            _cell(Text(formatTime(t.reportedAt), style: ts(15, FontWeight.w400)),
-                width: _timeW),
-            _cell(Align(alignment: Alignment.centerLeft, child: StatusPill(t.status)),
-                width: _statusW),
+            _cell(Text(formatTime(t.reportedAt), style: ts(15, FontWeight.w400)), width: _timeW),
             _cell(
               Text(
-                t.responder ?? 'Unclaimed',
-                style: ts(15, FontWeight.w400,
+                t.priorityLabel, 
+                style: ts(14, FontWeight.w800, color: priorityTextColor),
+              ), 
+              width: _prioW,
+            ),
+            _cell(Align(alignment: Alignment.centerLeft, child: StatusPill(t.status)), width: _statusW),
+            _cell(
+              Text(
+                t.responder != null 
+                    ? t.responder! 
+                    : (t.routedTo != null ? 'Routed: ${t.routedTo}' : 'Pending'),
+                style: ts(14, t.responder != null ? FontWeight.w600 : FontWeight.w400,
                     color: t.responder == null ? AppColors.muted : AppColors.navy),
               ),
-              width: _respW,
+              width: _respW + 20, // Give it slightly more width so "Routed: Main Site Clinic" fits
             ),
           ],
         ),
@@ -473,14 +571,15 @@ class TicketDetailPanel extends StatefulWidget {
 }
 
 class _TicketDetailPanelState extends State<TicketDetailPanel> {
-  static const _escalateAfter = Duration(minutes: 2);
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && widget.ticket.isNew) setState(() {});
+      if (mounted && widget.ticket.currentPriority != PriorityLevel.high && widget.ticket.status != TicketStatus.resolved) {
+        setState(() {});
+      }
     });
   }
 
@@ -533,10 +632,16 @@ class _TicketDetailPanelState extends State<TicketDetailPanel> {
             'Location': t.location,
             'Reported': formatTime(t.reportedAt, seconds: true),
             'Note': t.note.isEmpty ? '-' : t.note,
-            'Priority': t.priorityLabel,
+            'Priority': t.priorityLabel, 
             'Sent to': t.type.sentTo,
           }),
-          const SizedBox(height: 8),
+          
+          if (t.currentPriority != PriorityLevel.high && t.status != TicketStatus.resolved) ...[
+            const SizedBox(height: 6),
+            _buildPriorityTimerBox(t),
+          ],
+
+          const SizedBox(height: 12),
           Text('Timeline (saved automatically)', style: ts(14, FontWeight.w700)),
           const SizedBox(height: 10),
           for (final s in TicketStatus.values)
@@ -558,14 +663,10 @@ class _TicketDetailPanelState extends State<TicketDetailPanel> {
                 ],
               ),
             ),
-          if (t.isNew) ...[
-            const SizedBox(height: 6),
-            _buildEscalationBox(t),
-          ],
           const SizedBox(height: 16),
           PrimaryButton(
             label: t.isNew
-                ? "I'll respond"
+                ? (t.routedTo == user.name ? "Accept Dispatch" : "I'll take over")
                 : (t.status == TicketStatus.resolved
                     ? 'Resolved'
                     : 'Responding: ${t.responder}'),
@@ -602,9 +703,20 @@ class _TicketDetailPanelState extends State<TicketDetailPanel> {
     );
   }
 
-  Widget _buildEscalationBox(Ticket t) {
-    final left = _escalateAfter - DateTime.now().difference(t.reportedAt);
-    final expired = left.isNegative || left == Duration.zero;
+  Widget _buildPriorityTimerBox(Ticket t) {
+    final base = t.basePriority;
+    final current = t.currentPriority;
+
+    final elapsed = DateTime.now().difference(t.reportedAt);
+    final nextTierTime = base == PriorityLevel.low && current == PriorityLevel.low
+        ? const Duration(minutes: 5)
+        : (base == PriorityLevel.low ? const Duration(minutes: 10) : const Duration(minutes: 5));
+
+    final left = nextTierTime - elapsed;
+    if (left.isNegative) return const SizedBox.shrink();
+
+    final nextLabel = current == PriorityLevel.low ? 'Medium' : 'High';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -615,21 +727,13 @@ class _TicketDetailPanelState extends State<TicketDetailPanel> {
       child: Text.rich(
         TextSpan(
           style: ts(13, FontWeight.w400, color: AppColors.amberFg, height: 1.4),
-          children: expired
-              ? [
-                  TextSpan(
-                    text: 'Nobody claimed this ticket in 2:00. It was escalated to the next responder group.',
-                    style: ts(13, FontWeight.w700, color: AppColors.amberFg, height: 1.4),
-                  ),
-                ]
-              : [
-                  const TextSpan(
-                      text: 'If nobody claims this ticket in 2:00, it escalates to the next responder group. '),
-                  TextSpan(
-                    text: '${_mmss(left)} left.',
-                    style: ts(13, FontWeight.w700, color: AppColors.amberFg, height: 1.4),
-                  ),
-                ],
+          children: [
+            TextSpan(text: 'Algorithm flagged ${current.label} priority. Auto-escalating to $nextLabel in '),
+            TextSpan(
+              text: '${_mmss(left)}.',
+              style: ts(13, FontWeight.w700, color: AppColors.amberFg, height: 1.4),
+            ),
+          ],
         ),
       ),
     );

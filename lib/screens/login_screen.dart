@@ -15,8 +15,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   // Prefilled like the wireframe so the demo is one tap.
-  final _idCtrl = TextEditingController(text: 'ana.clinic');
-  final _pwCtrl = TextEditingController(text: 'password');
+  final _idCtrl = TextEditingController(text: '');
+  final _pwCtrl = TextEditingController(text: '');
   String? _error;
 
   @override
@@ -115,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 12),
                   // Demo helper. Delete before real use.
                   Text(
-                    'Demo accounts: ana.clinic (Medical) or carlo.guard (Security). Password: password',
+                    'Demo accounts: main.clinic, new.clinic (Medical) | main.guard, new.guard (Security). Password: password',
                     style: ts(12, FontWeight.w400, color: AppColors.muted, height: 1.4),
                   ),
                 ],

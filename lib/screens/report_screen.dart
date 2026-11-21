@@ -19,7 +19,10 @@ class _ReportScreenState extends State<ReportScreen> {
 
   TicketType _type = TicketType.medical;
   String _detail = TicketType.medical.details.first;
+  
+  CampusSite _site = CampusSite.main;
   String? _location;
+  
   bool _locationError = false;
   bool _isSending = false;
 
@@ -37,6 +40,15 @@ class _ReportScreenState extends State<ReportScreen> {
     });
   }
 
+  void _selectSite(CampusSite s) {
+    if (s == _site) return;
+    setState(() {
+      _site = s;
+      _location = null; // Reset specific location when switching sites
+      _locationError = false;
+    });
+  }
+
   Future<void> _send() async {
     if (_location == null) {
       setState(() => _locationError = true);
@@ -49,7 +61,7 @@ class _ReportScreenState extends State<ReportScreen> {
       final ticket = await TicketStore.instance.create(
         type: _type,
         detail: _detail,
-        location: _location!,
+        location: '${_site.label} - $_location', // Combines site + location for the responder dashboard
         note: _noteCtrl.text.trim(),
       );
       
@@ -62,6 +74,7 @@ class _ReportScreenState extends State<ReportScreen> {
       setState(() {
         _type = TicketType.medical;
         _detail = _type.details.first;
+        _site = CampusSite.main;
         _location = null;
         _locationError = false;
         _noteCtrl.clear();
@@ -125,28 +138,63 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  Widget _detailChip(String label) {
-    final selected = _detail == label;
+  Widget _siteTile(CampusSite s, IconData icon) {
+    final selected = _site == s;
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+      side: BorderSide(
+        color: selected ? AppColors.red : AppColors.border,
+        width: selected ? 3 : 2,
+      ),
+    );
+    return Expanded(
+      child: Material(
+        color: selected ? AppColors.redTint : Colors.white,
+        shape: shape,
+        child: InkWell(
+          customBorder: shape,
+          onTap: () => _selectSite(s),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 84),
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 28, color: selected ? AppColors.red : AppColors.navy),
+                const SizedBox(height: 6),
+                Text(
+                  s.label,
+                  style: ts(16, selected ? FontWeight.w700 : FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _optionChip(String label, bool isSelected, VoidCallback onTap) {
     final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(10),
       side: BorderSide(
-        color: selected ? AppColors.red : AppColors.border,
+        color: isSelected ? AppColors.red : AppColors.border,
         width: 2,
       ),
     );
     return Material(
-      color: selected ? AppColors.redTint : Colors.white,
+      color: isSelected ? AppColors.redTint : Colors.white,
       shape: shape,
       child: InkWell(
         customBorder: shape,
-        onTap: () => setState(() => _detail = label),
+        onTap: onTap,
         child: Container(
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Text(
             label,
             textAlign: TextAlign.center,
-            style: ts(14, selected ? FontWeight.w700 : FontWeight.w600),
+            style: ts(14, isSelected ? FontWeight.w700 : FontWeight.w600),
           ),
         ),
       ),
@@ -184,6 +232,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     ],
                   ),
                   const SizedBox(height: 18),
+                  
                   _sectionLabel('2. What exactly?', hint: 'Tap one'),
                   const SizedBox(height: 10),
                   GridView.builder(
@@ -196,53 +245,54 @@ class _ReportScreenState extends State<ReportScreen> {
                       crossAxisSpacing: 8,
                       mainAxisExtent: 44,
                     ),
-                    itemBuilder: (_, i) => _detailChip(_type.details[i]),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'The options change with Medical or Security, so the responder knows what to prepare before arriving.',
-                    style: ts(12, FontWeight.w400, color: AppColors.muted, height: 1.4),
+                    itemBuilder: (_, i) => _optionChip(
+                      _type.details[i],
+                      _detail == _type.details[i],
+                      () => setState(() => _detail = _type.details[i]),
+                    ),
                   ),
                   const SizedBox(height: 18),
+
                   _sectionLabel('3. Where?', hint: 'Required', hintColor: AppColors.red),
-                  const SizedBox(height: 8),
-                  Container(
-                    height: 48,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: _locationError ? AppColors.red : AppColors.border,
-                        width: 2,
-                      ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _siteTile(CampusSite.main, Icons.domain),
+                      const SizedBox(width: 12),
+                      _siteTile(CampusSite.newSite, Icons.domain_add),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  
+                  // Specific Location Grid for the selected Campus Site
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _site.locations.length,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      mainAxisExtent: 44,
                     ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _location,
-                        isExpanded: true,
-                        hint: Text('Select a campus building',
-                            style: ts(16, FontWeight.w500, color: AppColors.muted)),
-                        style: ts(16, FontWeight.w500),
-                        items: [
-                          for (final loc in kLocations)
-                            DropdownMenuItem(value: loc, child: Text(loc)),
-                        ],
-                        onChanged: (v) => setState(() {
-                          _location = v;
-                          _locationError = false;
-                        }),
-                      ),
+                    itemBuilder: (_, i) => _optionChip(
+                      _site.locations[i],
+                      _location == _site.locations[i],
+                      () => setState(() {
+                        _location = _site.locations[i];
+                        _locationError = false;
+                      }),
                     ),
                   ),
                   if (_locationError)
                     Padding(
-                      padding: const EdgeInsets.only(top: 6),
+                      padding: const EdgeInsets.only(top: 8),
                       child: Text('Please choose where it happened.',
                           style: ts(13, FontWeight.w600, color: AppColors.red)),
                     ),
                   const SizedBox(height: 18),
-                  _sectionLabel('4. Short note', hint: 'Optional'),
+
+                  _sectionLabel('4. Building Floor or Room Number', hint: 'Optional'),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _noteCtrl,
