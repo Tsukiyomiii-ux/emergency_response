@@ -52,22 +52,61 @@ class _ReportScreenState extends State<ReportScreen> {
     });
   }
 
-  Future<void> _send() async {
+Future<void> _confirmAndSend() async {
     if (_location == null) {
       setState(() => _locationError = true);
       return;
     }
-    
-    setState(() => _isSending = true);
 
-    // Determine the final detail string
-    String finalDetail = _detail;
-    if (_detail == 'Other') {
-      final customText = _otherDetailCtrl.text.trim();
-      if (customText.isNotEmpty) {
-        finalDetail = customText; // Use their custom typed emergency
-      }
+    final customDetail = _detail == 'Other' ? _otherDetailCtrl.text.trim() : _detail;
+    final finalDetail = customDetail.isEmpty ? 'Other' : customDetail;
+
+    // SHOW CONFIRMATION DIALOG
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Send Emergency Report?', style: ts(18, FontWeight.w700)),
+        content: Text.rich(
+          TextSpan(
+            style: ts(15, FontWeight.w500, height: 1.5, color: AppColors.navy),
+            children: [
+              const TextSpan(text: 'You are about to report:\n\n'),
+              TextSpan(text: 'Type: ', style: ts(15, FontWeight.w700)),
+              TextSpan(text: '${_type.label}\n'),
+              TextSpan(text: 'Detail: ', style: ts(15, FontWeight.w700)),
+              TextSpan(text: '$finalDetail\n'),
+              TextSpan(text: 'Location: ', style: ts(15, FontWeight.w700)),
+              TextSpan(text: '${_site.label} - $_location\n'),
+            ],
+          ),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Cancel', style: ts(15, FontWeight.w600, color: AppColors.muted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Confirm', style: ts(15, FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    // If they clicked "Confirm", execute the actual send function
+    if (confirm == true) {
+      _send(finalDetail);
     }
+  }
+
+  Future<void> _send(String finalDetail) async {
+    setState(() => _isSending = true);
 
     try {
       final ticket = await TicketStore.instance.create(
@@ -340,7 +379,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 children: [
                   PrimaryButton(
                     label: _isSending ? 'Sending...' : 'Send report', 
-                    onPressed: _isSending ? null : _send,
+                    onPressed: _isSending ? null : _confirmAndSend, // Trigger confirmation first
                   ),
                   const SizedBox(height: 10),
                   Text(
