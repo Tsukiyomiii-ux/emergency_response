@@ -47,33 +47,75 @@ class TicketStore extends ChangeNotifier {
     return list;
   }
 
-  Future<Ticket> create({
+Future<Ticket> create({
     required TicketType type,
     required String detail,
     required String location,
     String note = '',
   }) async {
-    // 1. Get base coordinates for the emergency
+    final now = DateTime.now();
+
+    // ---------------------------------------------------------
+    // 1. STRICT INCIDENT DEDUPLICATION (10-MINUTE CLUSTERING)
+    // ---------------------------------------------------------
+    try {
+      final duplicate = _tickets.firstWhere((t) {
+        final isSameType = t.type == type;
+        final isSameLocation = t.location == location;
+        final isSameCondition = t.detail == detail; 
+
+        // Must not be resolved yet
+        final isActive = t.status != TicketStatus.resolved;
+        
+        // STRICT TIMEOUT: Only merges if the original was reported within the last 10 minutes
+        final isRecent = now.difference(t.reportedAt) <= const Duration(minutes: 10);
+        
+        return isSameType && isSameLocation && isSameCondition && isActive && isRecent;
+      });
+
+      // Match found within 10 minutes. Increment the confidence badge.
+      await _collection.doc(duplicate.id).update({
+        'verificationCount': FieldValue.increment(1),
+      });
+      return duplicate; 
+    } catch (_) {
+      // No match, or the previous incident is older than 10 mins. Create new ticket.
+    }
+
+    // ---------------------------------------------------------
+    // 2. GEOSPATIAL DATA SETUP
+    // ---------------------------------------------------------
     final targetCoords = kLocationCoords[location] ?? [50.0, 50.0];
     final targetX = targetCoords[0];
     final targetY = targetCoords[1];
 
-    // 2. Find available responder teams for this type
-    final available = kResponders.where((r) => r.type == type).toList();
+    // ---------------------------------------------------------
+    // 3. DYNAMIC BLAST RADIUS (GEOFENCE ALGORITHM)
+    // ---------------------------------------------------------
+    List<String> blastRadiusZones = [];
+    final startingPriority = kBasePriorities[detail] ?? PriorityLevel.low;
 
-    // 3. SMART ALGORITHM: Geospatial Proximity + Load Balancing
+    if (startingPriority == PriorityLevel.high) {
+      kLocationCoords.forEach((zoneName, coords) {
+        if (zoneName != location) { 
+          final dist = math.sqrt(math.pow(coords[0] - targetX, 2) + math.pow(coords[1] - targetY, 2));
+          if (dist <= 15.0) { 
+            blastRadiusZones.add(zoneName);
+          }
+        }
+      });
+    }
+
+    // ---------------------------------------------------------
+    // 4. SMART ROUTING & LOAD BALANCING
+    // ---------------------------------------------------------
+    final available = kResponders.where((r) => r.type == type).toList();
     Responder? bestResponder;
     double bestScore = double.infinity;
 
     for (final r in available) {
-      // Calculate raw physical distance (Euclidean formula)
       final distance = math.sqrt(math.pow(r.x - targetX, 2) + math.pow(r.y - targetY, 2));
-
-      // Count how many active tickets this specific responder is currently handling
       final activeLoad = _tickets.where((t) => t.responder == r.name && t.status != TicketStatus.resolved).length;
-
-      // The Backup Logic: Add a massive distance penalty (50 units) for every active ticket.
-      // If they are busy, the algorithm considers them "further away" and routes to the backup.
       final workloadPenalty = activeLoad * 50.0;
       final finalScore = distance + workloadPenalty;
 
@@ -83,6 +125,7 @@ class TicketStore extends ChangeNotifier {
       }
     }
 
+    // Create the brand new ticket payload
     final docRef = _collection.doc();
     final ticket = Ticket(
       id: docRef.id,
@@ -90,8 +133,10 @@ class TicketStore extends ChangeNotifier {
       detail: detail,
       location: location,
       note: note,
-      reportedAt: DateTime.now(),
+      reportedAt: now,
       routedTo: bestResponder?.name ?? 'Unassigned',
+      verificationCount: 1,
+      affectedZones: blastRadiusZones, 
     );
     
     await docRef.set(ticket.toMap());

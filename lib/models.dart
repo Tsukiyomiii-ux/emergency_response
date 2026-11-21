@@ -129,7 +129,9 @@ class Ticket {
     this.note = '',
     this.status = TicketStatus.reported,
     this.responder,
-    this.routedTo, // NEW: Algorithm's target
+    this.routedTo,
+    this.verificationCount = 1,
+    this.affectedZones = const [], // NEW: Stores the dynamic blast radius
     Map<TicketStatus, DateTime>? times,
   }) : times = times ?? {TicketStatus.reported: reportedAt};
 
@@ -143,6 +145,8 @@ class Ticket {
   TicketStatus status;
   String? responder;
   String? routedTo;
+  final int verificationCount;
+  final List<String> affectedZones; // NEW
   
   final Map<TicketStatus, DateTime> times;
 
@@ -177,6 +181,8 @@ class Ticket {
       'status': status.name,
       'responder': responder,
       'routedTo': routedTo,
+      'verificationCount': verificationCount,
+      'affectedZones': affectedZones, // NEW
       'times': times.map((k, v) => MapEntry(k.name, v.toIso8601String())),
     };
   }
@@ -194,6 +200,8 @@ class Ticket {
       status: TicketStatus.values.byName(data['status'] ?? 'reported'),
       responder: data['responder'],
       routedTo: data['routedTo'],
+      verificationCount: data['verificationCount'] as int? ?? 1,
+      affectedZones: List<String>.from(data['affectedZones'] ?? []), // NEW
       times: timesMap.map((k, v) => MapEntry(TicketStatus.values.byName(k), DateTime.tryParse(v.toString()) ?? DateTime.now())),
     );
   }

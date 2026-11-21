@@ -520,6 +520,19 @@ class _TicketTable extends StatelessWidget {
                 children: [
                   Text(t.detail,
                       style: ts(15, isNew || isSelected ? FontWeight.w700 : FontWeight.w600)),
+                  
+                  // NEW: Clustering Confidence Badge
+                  if (t.verificationCount > 1)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.indigo, // Stands out nicely from the Red 'NEW' badge
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text('${t.verificationCount}x Verified',
+                          style: ts(11, FontWeight.w700, color: Colors.white)),
+                    ),
+
                   if (isNew)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -626,7 +639,7 @@ class _TicketDetailPanelState extends State<TicketDetailPanel> {
             ],
           ),
           const SizedBox(height: 16),
-          InfoGrid(rows: {
+InfoGrid(rows: {
             'Type': t.type.label,
             'Detail': t.detail,
             'Location': t.location,
@@ -634,7 +647,52 @@ class _TicketDetailPanelState extends State<TicketDetailPanel> {
             'Note': t.note.isEmpty ? '-' : t.note,
             'Priority': t.priorityLabel, 
             'Sent to': t.type.sentTo,
+            'Verifications': '${t.verificationCount} (Confidence Score)',
           }),
+          
+          // NEW: DYNAMIC BLAST RADIUS UI
+          if (t.affectedZones.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.red.shade300, width: 2),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 20),
+                      const SizedBox(width: 8),
+                      Text('THREAT RADIUS (GEOFENCE)', 
+                          style: ts(13, FontWeight.w800, color: Colors.red.shade800)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text('Adjacent campus zones algorithmically flagged for potential impact:',
+                      style: ts(13, FontWeight.w500, color: Colors.red.shade900)),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: t.affectedZones.map((zone) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade600,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(zone.replaceAll('Main Site - ', '').replaceAll('New Site - ', ''), 
+                          style: ts(12, FontWeight.w700, color: Colors.white)),
+                    )).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ],
           
           if (t.currentPriority != PriorityLevel.high && t.status != TicketStatus.resolved) ...[
             const SizedBox(height: 6),
